@@ -42,14 +42,14 @@ import { Inject } from '@angular/core';
     <mat-dialog-content class="pt-4">
       <form [formGroup]="tradeForm" class="space-y-4">
         <div class="grid grid-cols-2 gap-4">
-          <mat-form-field appearance="outline" class="w-full">
+          <mat-form-field class="w-full">
             <mat-label>Date</mat-label>
             <input matInput [matDatepicker]="picker" formControlName="date" placeholder="Choose a date">
             <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
             <mat-datepicker #picker></mat-datepicker>
           </mat-form-field>
 
-          <mat-form-field appearance="outline" class="w-full">
+          <mat-form-field class="w-full">
             <mat-label>Symbol</mat-label>
             <mat-select formControlName="symbol">
               <mat-option value="NIFTY">NIFTY</mat-option>
@@ -62,7 +62,7 @@ import { Inject } from '@angular/core';
         </div>
 
         <div class="grid grid-cols-3 gap-4">
-          <mat-form-field appearance="outline" class="w-full">
+          <mat-form-field class="w-full">
             <mat-label>Option Type</mat-label>
             <mat-select formControlName="optionType">
               <mat-option value="CE">CE</mat-option>
@@ -70,42 +70,42 @@ import { Inject } from '@angular/core';
             </mat-select>
           </mat-form-field>
 
-          <mat-form-field appearance="outline" class="w-full col-span-2">
+          <mat-form-field class="w-full col-span-2">
             <mat-label>Strike Price</mat-label>
             <input matInput type="number" formControlName="strike">
           </mat-form-field>
         </div>
 
         <div class="grid grid-cols-2 gap-4">
-          <mat-form-field appearance="outline" class="w-full">
+          <mat-form-field class="w-full">
             <mat-label>Entry Premium (₹)</mat-label>
             <input matInput type="number" formControlName="entryPremium">
           </mat-form-field>
 
-          <mat-form-field appearance="outline" class="w-full">
+          <mat-form-field class="w-full">
             <mat-label>Quantity</mat-label>
             <input matInput type="number" formControlName="quantity">
           </mat-form-field>
         </div>
 
         <div class="grid grid-cols-2 gap-4">
-          <mat-form-field appearance="outline" class="w-full">
+          <mat-form-field class="w-full">
             <mat-label>Stop Loss Premium (₹)</mat-label>
             <input matInput type="number" formControlName="stopLossPremium">
           </mat-form-field>
 
-          <mat-form-field appearance="outline" class="w-full">
+          <mat-form-field class="w-full">
             <mat-label>Target Premium (₹)</mat-label>
             <input matInput type="number" formControlName="targetPremium">
           </mat-form-field>
         </div>
 
-        <mat-form-field appearance="outline" class="w-full">
+        <mat-form-field class="w-full">
           <mat-label>Exit Premium (₹) [Leave empty if open]</mat-label>
           <input matInput type="number" formControlName="exitPremium" placeholder="Not exited yet">
         </mat-form-field>
 
-        <mat-form-field appearance="outline" class="w-full">
+        <mat-form-field class="w-full">
           <mat-label>Notes</mat-label>
           <textarea matInput formControlName="notes" rows="2" placeholder="Reasons for trade, mistakes made, feelings..."></textarea>
         </mat-form-field>
@@ -230,14 +230,14 @@ export class TradeDialogComponent implements OnInit {
       <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <!-- Search Text -->
-          <mat-form-field appearance="outline" class="w-full">
+          <mat-form-field class="w-full">
             <mat-label>Search Notes/Strike</mat-label>
             <input matInput [(ngModel)]="filterText" (ngModelChange)="applyFilters()" placeholder="e.g. support bounce">
             <mat-icon matSuffix class="text-slate-400">search</mat-icon>
           </mat-form-field>
 
           <!-- Filter Symbol -->
-          <mat-form-field appearance="outline" class="w-full">
+          <mat-form-field class="w-full">
             <mat-label>Filter Index</mat-label>
             <mat-select [(ngModel)]="filterSymbol" (selectionChange)="applyFilters()">
               <mat-option value="">All Indices</mat-option>
@@ -250,7 +250,7 @@ export class TradeDialogComponent implements OnInit {
           </mat-form-field>
 
           <!-- Filter Status -->
-          <mat-form-field appearance="outline" class="w-full">
+          <mat-form-field class="w-full">
             <mat-label>Filter Status</mat-label>
             <mat-select [(ngModel)]="filterStatus" (selectionChange)="applyFilters()">
               <mat-option value="">All Trades</mat-option>

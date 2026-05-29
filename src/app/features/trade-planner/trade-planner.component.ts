@@ -49,7 +49,7 @@ import { IndexSymbol, OptionType } from '../../core/models/trade.model';
           
           <form [formGroup]="plannerForm" class="space-y-5">
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <mat-form-field appearance="outline" class="w-full">
+              <mat-form-field class="w-full">
                 <mat-label>Symbol</mat-label>
                 <mat-select formControlName="symbol">
                   <mat-option value="NIFTY">NIFTY</mat-option>
@@ -70,17 +70,17 @@ import { IndexSymbol, OptionType } from '../../core/models/trade.model';
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <mat-form-field appearance="outline" class="w-full">
+              <mat-form-field class="w-full">
                 <mat-label>Strike Price</mat-label>
                 <input matInput type="number" formControlName="strike" placeholder="e.g. 22200">
               </mat-form-field>
 
-              <mat-form-field appearance="outline" class="w-full">
+              <mat-form-field class="w-full">
                 <mat-label>Entry Premium (₹)</mat-label>
                 <input matInput type="number" formControlName="entryPremium" placeholder="e.g. 150">
               </mat-form-field>
 
-              <mat-form-field appearance="outline" class="w-full">
+              <mat-form-field class="w-full">
                 <mat-label>Lot Size / Lot Qty</mat-label>
                 <input matInput type="number" formControlName="quantity" placeholder="e.g. 75">
                 <mat-hint class="text-[10px] text-slate-400 flex items-center justify-between mt-1">
@@ -94,7 +94,7 @@ import { IndexSymbol, OptionType } from '../../core/models/trade.model';
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <mat-form-field appearance="outline" class="w-full">
+              <mat-form-field class="w-full">
                 <mat-label>Stop Loss Premium (₹)</mat-label>
                 <input matInput type="number" formControlName="stopLossPremium" placeholder="e.g. 120">
                 <mat-hint class="text-xs text-rose-500 font-bold mt-1">
@@ -102,7 +102,7 @@ import { IndexSymbol, OptionType } from '../../core/models/trade.model';
                 </mat-hint>
               </mat-form-field>
 
-              <mat-form-field appearance="outline" class="w-full">
+              <mat-form-field class="w-full">
                 <mat-label>Risk-Reward Target Ratio</mat-label>
                 <mat-select formControlName="rrRatio">
                   <mat-option [value]="1.5">1:1.5</mat-option>

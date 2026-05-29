@@ -46,24 +46,24 @@ import { RiskService } from '../../core/services/risk.service';
                 <div class="space-y-4">
                   <h3 class="text-base font-bold text-slate-700">Inputs</h3>
                   <form [formGroup]="slForm" class="space-y-4">
-                    <mat-form-field appearance="outline" class="w-full">
+                    <mat-form-field class="w-full">
                       <mat-label>Trading Capital (₹)</mat-label>
                       <input matInput type="number" formControlName="capital">
                     </mat-form-field>
                     
-                    <mat-form-field appearance="outline" class="w-full">
+                    <mat-form-field class="w-full">
                       <mat-label>Risk Percentage (%)</mat-label>
                       <input matInput type="number" formControlName="riskPercent">
                       <span matSuffix class="mr-2 font-bold">%</span>
                     </mat-form-field>
 
                     <div class="grid grid-cols-2 gap-4">
-                      <mat-form-field appearance="outline" class="w-full">
+                      <mat-form-field class="w-full">
                         <mat-label>Entry Price (₹)</mat-label>
                         <input matInput type="number" formControlName="entryPrice">
                       </mat-form-field>
 
-                      <mat-form-field appearance="outline" class="w-full">
+                      <mat-form-field class="w-full">
                         <mat-label>Quantity</mat-label>
                         <input matInput type="number" formControlName="quantity">
                       </mat-form-field>
@@ -122,24 +122,24 @@ import { RiskService } from '../../core/services/risk.service';
                 <div class="space-y-4">
                   <h3 class="text-base font-bold text-slate-700">Inputs</h3>
                   <form [formGroup]="posForm" class="space-y-4">
-                    <mat-form-field appearance="outline" class="w-full">
+                    <mat-form-field class="w-full">
                       <mat-label>Trading Capital (₹)</mat-label>
                       <input matInput type="number" formControlName="capital">
                     </mat-form-field>
                     
-                    <mat-form-field appearance="outline" class="w-full">
+                    <mat-form-field class="w-full">
                       <mat-label>Max Risk Amount (₹)</mat-label>
                       <input matInput type="number" formControlName="maxRiskAmount">
                       <mat-hint class="text-xs text-slate-400">Recommended: {{ posForm.get('capital')?.value * 0.01 | number:'1.0-0' }} (1%)</mat-hint>
                     </mat-form-field>
 
                     <div class="grid grid-cols-2 gap-4 pt-2">
-                      <mat-form-field appearance="outline" class="w-full">
+                      <mat-form-field class="w-full">
                         <mat-label>Entry Price (₹)</mat-label>
                         <input matInput type="number" formControlName="entryPrice">
                       </mat-form-field>
 
-                      <mat-form-field appearance="outline" class="w-full">
+                      <mat-form-field class="w-full">
                         <mat-label>Stop Loss Price (₹)</mat-label>
                         <input matInput type="number" formControlName="stopLossPrice">
                       </mat-form-field>
@@ -199,18 +199,18 @@ import { RiskService } from '../../core/services/risk.service';
                   <h3 class="text-base font-bold text-slate-700">Inputs</h3>
                   <form [formGroup]="rrForm" class="space-y-4">
                     <div class="grid grid-cols-2 gap-4">
-                      <mat-form-field appearance="outline" class="w-full">
+                      <mat-form-field class="w-full">
                         <mat-label>Entry Price (₹)</mat-label>
                         <input matInput type="number" formControlName="entryPrice">
                       </mat-form-field>
 
-                      <mat-form-field appearance="outline" class="w-full">
+                      <mat-form-field class="w-full">
                         <mat-label>Stop Loss Price (₹)</mat-label>
                         <input matInput type="number" formControlName="stopLossPrice">
                       </mat-form-field>
                     </div>
 
-                    <mat-form-field appearance="outline" class="w-full">
+                    <mat-form-field class="w-full">
                       <mat-label>Risk Reward Ratio</mat-label>
                       <mat-select formControlName="ratio">
                         <mat-option [value]="1">1:1</mat-option>
@@ -279,18 +279,18 @@ import { RiskService } from '../../core/services/risk.service';
                 <div class="space-y-4">
                   <h3 class="text-base font-bold text-slate-700">Inputs</h3>
                   <form [formGroup]="beginnerForm" class="space-y-4">
-                    <mat-form-field appearance="outline" class="w-full">
+                    <mat-form-field class="w-full">
                       <mat-label>Trading Capital (₹)</mat-label>
                       <input matInput type="number" formControlName="capital">
                     </mat-form-field>
                     
                     <div class="grid grid-cols-2 gap-4">
-                      <mat-form-field appearance="outline" class="w-full">
+                      <mat-form-field class="w-full">
                         <mat-label>Entry Premium (₹)</mat-label>
                         <input matInput type="number" formControlName="entryPremium">
                       </mat-form-field>
 
-                      <mat-form-field appearance="outline" class="w-full">
+                      <mat-form-field class="w-full">
                         <mat-label>Quantity</mat-label>
                         <input matInput type="number" formControlName="quantity">
                       </mat-form-field>

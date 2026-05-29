@@ -42,7 +42,7 @@ import { JournalService } from '../../core/services/journal.service';
           
           <form [formGroup]="settingsForm" (ngSubmit)="saveSettings()" class="space-y-6">
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <mat-form-field appearance="outline" class="w-full">
+              <mat-form-field class="w-full">
                 <mat-label>Trading Capital (₹)</mat-label>
                 <input matInput type="number" formControlName="capital" placeholder="e.g. 100000">
                 <mat-icon matSuffix class="text-slate-400">payments</mat-icon>
@@ -50,7 +50,7 @@ import { JournalService } from '../../core/services/journal.service';
                 <mat-error *ngIf="settingsForm.get('capital')?.hasError('min')">Capital must be greater than 0</mat-error>
               </mat-form-field>
 
-              <mat-form-field appearance="outline" class="w-full">
+              <mat-form-field class="w-full">
                 <mat-label>Max Risk Per Trade (%)</mat-label>
                 <input matInput type="number" formControlName="maxRiskPerTradePercent" placeholder="e.g. 1">
                 <span matSuffix class="text-slate-400 font-bold mr-2">%</span>
@@ -61,7 +61,7 @@ import { JournalService } from '../../core/services/journal.service';
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <mat-form-field appearance="outline" class="w-full">
+              <mat-form-field class="w-full">
                 <mat-label>Daily Risk Limit (%)</mat-label>
                 <input matInput type="number" formControlName="dailyRiskPercent" placeholder="e.g. 2">
                 <span matSuffix class="text-slate-400 font-bold mr-2">%</span>
@@ -87,31 +87,31 @@ import { JournalService } from '../../core/services/journal.service';
               </h3>
 
               <div class="grid grid-cols-2 sm:grid-cols-3 gap-4" formGroupName="lotSizes">
-                <mat-form-field appearance="outline" class="w-full">
+                <mat-form-field class="w-full">
                   <mat-label>NIFTY</mat-label>
                   <input matInput type="number" formControlName="NIFTY">
                   <mat-error *ngIf="settingsForm.get('lotSizes.NIFTY')?.invalid">Required, Min 1</mat-error>
                 </mat-form-field>
 
-                <mat-form-field appearance="outline" class="w-full">
+                <mat-form-field class="w-full">
                   <mat-label>BANKNIFTY</mat-label>
                   <input matInput type="number" formControlName="BANKNIFTY">
                   <mat-error *ngIf="settingsForm.get('lotSizes.BANKNIFTY')?.invalid">Required, Min 1</mat-error>
                 </mat-form-field>
 
-                <mat-form-field appearance="outline" class="w-full">
+                <mat-form-field class="w-full">
                   <mat-label>FINNIFTY</mat-label>
                   <input matInput type="number" formControlName="FINNIFTY">
                   <mat-error *ngIf="settingsForm.get('lotSizes.FINNIFTY')?.invalid">Required, Min 1</mat-error>
                 </mat-form-field>
 
-                <mat-form-field appearance="outline" class="w-full">
+                <mat-form-field class="w-full">
                   <mat-label>SENSEX</mat-label>
                   <input matInput type="number" formControlName="SENSEX">
                   <mat-error *ngIf="settingsForm.get('lotSizes.SENSEX')?.invalid">Required, Min 1</mat-error>
                 </mat-form-field>
 
-                <mat-form-field appearance="outline" class="w-full">
+                <mat-form-field class="w-full">
                   <mat-label>BANKEX</mat-label>
                   <input matInput type="number" formControlName="BANKEX">
                   <mat-error *ngIf="settingsForm.get('lotSizes.BANKEX')?.invalid">Required, Min 1</mat-error>
