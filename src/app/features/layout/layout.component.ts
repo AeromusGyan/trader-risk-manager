@@ -37,8 +37,8 @@ import { RiskService } from '../../core/services/risk.service';
             <mat-icon class="scale-90 font-black">gavel</mat-icon>
           </div>
           <div>
-            <h1 class="text-sm font-extrabold tracking-tight leading-none text-slate-800">Trader Risk</h1>
-            <span class="text-[10px] text-slate-400 font-bold tracking-wider uppercase">Manager</span>
+            <h1 class="text-sm font-extrabold tracking-tight leading-none text-slate-800">Risk</h1>
+            <span class="text-[10px] text-slate-400 font-bold tracking-wider uppercase">Mania</span>
           </div>
         </div>
 
@@ -89,7 +89,7 @@ import { RiskService } from '../../core/services/risk.service';
             <button mat-icon-button *ngIf="isMobile" (click)="sidenav.toggle()" class="text-slate-600 dark:text-slate-300">
               <mat-icon>menu</mat-icon>
             </button>
-            <span class="text-base font-bold text-slate-800 dark:text-white hidden sm:inline-block">Indian Market Risk Hub</span>
+            <span class="text-base font-bold text-slate-800 dark:text-white hidden sm:inline-block">Risk Mania</span>
           </div>
 
           <!-- Header Right Utilities: Daily Limit Widget + Mode Toggles -->
