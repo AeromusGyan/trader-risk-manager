@@ -1,0 +1,135 @@
+@import url('https://fonts.googleapis.com/icon?family=Material+Icons');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+@import "@angular/material/prebuilt-themes/indigo-pink.css";
+@import "tailwindcss";
+
+@source "./app/**/*.{html,ts}";
+
+/* Global Styles */
+html, body {
+  height: 100%;
+}
+
+body {
+  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  margin: 0;
+  background-color: #f8fafc; /* Slate 50 */
+  color: #0f172a; /* Slate 900 */
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Dark Mode Overrides */
+.dark body {
+  background-color: #0b0f19; /* Custom rich dark color */
+  color: #f8fafc; /* Slate 50 */
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Angular Material customization overrides for dark theme */
+.dark .mat-mdc-card {
+  background-color: #111827 !important; /* Gray 900 */
+  color: #f3f4f6 !important;
+  border: 1px solid #1f2937;
+}
+
+.dark .mat-mdc-tab-header {
+  border-bottom-color: #1f2937 !important;
+}
+
+.dark .mat-mdc-tab {
+  color: #9ca3af !important;
+}
+
+.dark .mat-mdc-tab.mdc-tab--active .mdc-tab__text-label {
+  color: #6366f1 !important; /* Indigo 500 */
+}
+
+.dark .mat-mdc-text-field-wrapper {
+  background-color: #1f2937 !important; /* Gray 800 */
+}
+
+.dark .mat-mdc-form-field {
+  color: #f3f4f6 !important;
+}
+
+.dark .mat-mdc-select-value {
+  color: #f3f4f6 !important;
+}
+
+.dark .mat-mdc-option {
+  background-color: #111827 !important;
+  color: #f3f4f6 !important;
+}
+
+.dark .mat-mdc-option:hover {
+  background-color: #1f2937 !important;
+}
+
+.dark .mat-mdc-dialog-container .mdc-dialog__surface {
+  background-color: #111827 !important;
+  color: #f3f4f6 !important;
+}
+
+/* Sidebar active nav state icon coloring */
+.active-nav mat-icon {
+  color: #4f46e5 !important;
+}
+
+/* Material form field outline overrides for modern rounded inputs */
+.mat-mdc-form-field {
+  width: 100%;
+}
+
+.mdc-text-field--outlined {
+  --mdc-outlined-text-field-container-shape: 10px !important;
+}
+
+.mat-mdc-text-field-wrapper {
+  background-color: #ffffff !important;
+}
+
+/* Reset Tailwind preflight styling for Angular Material inputs, selects, textareas */
+.mat-mdc-form-field input,
+.mat-mdc-form-field select,
+.mat-mdc-form-field textarea {
+  border: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Fix Material outline notch top border when label floats */
+.mdc-notched-outline--notched .mdc-notched-outline__notch {
+  border-top: none !important;
+}
+
+/* Fix floating label notch overlap by masking the border with a white background */
+.mdc-floating-label--float-above {
+  background-color: #ffffff !important;
+  padding: 0 4px !important;
+}
+
