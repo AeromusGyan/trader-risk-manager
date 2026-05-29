@@ -114,7 +114,7 @@ import { RiskService } from '../../core/services/risk.service';
         </mat-toolbar>
 
         <!-- Main Inner Scrollable Content -->
-        <main class="flex-1 overflow-y-auto">
+        <main class="flex-1 overflow-y-auto overflow-x-hidden w-full max-w-full">
           <router-outlet></router-outlet>
         </main>
 

@@ -266,7 +266,7 @@ export class TradeDialogComponent implements OnInit {
       <!-- Table Card -->
       <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
-          <table mat-table [dataSource]="dataSource" matSort class="w-full">
+          <table mat-table [dataSource]="dataSource" matSort class="w-full min-w-[1000px]">
             <!-- Date Column -->
             <ng-container matColumnDef="date">
               <th mat-header-cell *matHeaderCellDef mat-sort-header class="text-xs uppercase font-semibold text-slate-500 tracking-wider"> Date </th>
