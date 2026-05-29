@@ -302,7 +302,7 @@ export class TradeDialogComponent implements OnInit {
 
             <!-- Symbol & Strike Column -->
             <ng-container matColumnDef="contract">
-              <th mat-header-cell *matHeaderCellDef class="text-xs uppercase font-semibold text-slate-500 tracking-wider"> Contract </th>
+              <th mat-header-cell *matHeaderCellDef mat-sort-header class="text-xs uppercase font-semibold text-slate-500 tracking-wider"> Contract </th>
               <td mat-cell *matCellDef="let row" class="text-sm">
                 <span class="font-bold text-slate-700 dark:text-slate-300">{{ row.symbol }}</span>
                 <span class="ml-1 text-slate-400">{{ row.strike }}</span>
@@ -314,7 +314,7 @@ export class TradeDialogComponent implements OnInit {
 
             <!-- Pricing Column -->
             <ng-container matColumnDef="pricing">
-              <th mat-header-cell *matHeaderCellDef class="text-xs uppercase font-semibold text-slate-500 tracking-wider"> Entry / Exit </th>
+              <th mat-header-cell *matHeaderCellDef mat-sort-header class="text-xs uppercase font-semibold text-slate-500 tracking-wider"> Entry / Exit </th>
               <td mat-cell *matCellDef="let row" class="text-sm">
                 <span class="font-semibold text-slate-700 dark:text-slate-300">₹{{ row.entryPremium }}</span>
                 <span class="text-slate-400 mx-1">→</span>
@@ -438,6 +438,26 @@ export class TradingJournalComponent implements OnInit {
 
   refreshDataSource() {
     this.dataSource.data = this.journalService.trades();
+    this.dataSource.sortingDataAccessor = (item: Trade, property: string) => {
+      switch (property) {
+        case 'date':
+          return new Date(item.date);
+        case 'contract':
+          return `${item.symbol} ${item.strike}`;
+        case 'pricing':
+          return item.entryPremium;
+        case 'quantity':
+          return item.quantity;
+        case 'slTarget':
+          return item.stopLossPremium;
+        case 'netPL':
+          return item.netPL ?? 0;
+        case 'status':
+          return item.status;
+        default:
+          return (item as any)[property];
+      }
+    };
     setTimeout(() => {
       this.dataSource.paginator = this.paginator;
       this.dataSource.sort = this.sort;
