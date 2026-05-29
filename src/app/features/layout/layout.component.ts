@@ -64,6 +64,11 @@ import { RiskService } from '../../core/services/risk.service';
             <span class="text-sm">Trading Journal</span>
           </a>
 
+          <a routerLink="/guide" routerLinkActive="bg-indigo-50 text-indigo-600 active-nav" (click)="onLinkClick()" class="flex items-center gap-3 py-3 px-4 rounded-xl font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-all duration-150">
+            <mat-icon class="scale-90 text-slate-400">help_outline</mat-icon>
+            <span class="text-sm">User Guide</span>
+          </a>
+
           <a routerLink="/settings" routerLinkActive="bg-indigo-50 text-indigo-600 active-nav" (click)="onLinkClick()" class="flex items-center gap-3 py-3 px-4 rounded-xl font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-all duration-150">
             <mat-icon class="scale-90 text-slate-400">settings</mat-icon>
             <span class="text-sm">Settings</span>
