@@ -123,7 +123,7 @@ export class RiskService {
 
   // Validation engine checklist
   validateTrade(
-    symbol: IndexSymbol,
+    symbol: string,
     entryPrice: number,
     stopLossPrice: number,
     quantity: number,

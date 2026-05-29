@@ -51,13 +51,24 @@ import { Inject } from '@angular/core';
 
           <mat-form-field class="w-full">
             <mat-label>Symbol</mat-label>
-            <mat-select formControlName="symbol">
+            <mat-select formControlName="symbol" (selectionChange)="onSymbolChange($event.value)">
               <mat-option value="NIFTY">NIFTY</mat-option>
               <mat-option value="BANKNIFTY">BANKNIFTY</mat-option>
               <mat-option value="FINNIFTY">FINNIFTY</mat-option>
               <mat-option value="SENSEX">SENSEX</mat-option>
               <mat-option value="BANKEX">BANKEX</mat-option>
+              <mat-option value="OTHER">OTHER (Custom Stock/Index)</mat-option>
             </mat-select>
+          </mat-form-field>
+        </div>
+
+        <div *ngIf="showCustomSymbol">
+          <mat-form-field class="w-full">
+            <mat-label>Custom Symbol (e.g. RELIANCE, TCS, AAPL)</mat-label>
+            <input matInput formControlName="customSymbol" placeholder="Enter stock/index symbol">
+            <mat-error *ngIf="tradeForm.get('customSymbol')?.invalid">
+              Symbol name is required.
+            </mat-error>
           </mat-form-field>
         </div>
 
@@ -121,6 +132,7 @@ import { Inject } from '@angular/core';
 })
 export class TradeDialogComponent implements OnInit {
   tradeForm!: FormGroup;
+  showCustomSymbol = false;
 
   constructor(
     private fb: FormBuilder,
@@ -138,9 +150,13 @@ export class TradeDialogComponent implements OnInit {
       }
     }
 
+    const isCustomSymbol = t && !['NIFTY', 'BANKNIFTY', 'FINNIFTY', 'SENSEX', 'BANKEX'].includes(t.symbol);
+    this.showCustomSymbol = !!isCustomSymbol;
+
     this.tradeForm = this.fb.group({
       date: [initialDate, [Validators.required]],
-      symbol: [t ? t.symbol : 'NIFTY', [Validators.required]],
+      symbol: [t ? (isCustomSymbol ? 'OTHER' : t.symbol) : 'NIFTY', [Validators.required]],
+      customSymbol: [isCustomSymbol ? t.symbol : '', isCustomSymbol ? [Validators.required] : []],
       strike: [t ? t.strike : 22200, [Validators.required, Validators.min(1)]],
       optionType: [t ? t.optionType : 'CE', [Validators.required]],
       entryPremium: [t ? t.entryPremium : 150, [Validators.required, Validators.min(0.1)]],
@@ -150,6 +166,16 @@ export class TradeDialogComponent implements OnInit {
       exitPremium: [t && t.exitPremium !== undefined ? t.exitPremium : null],
       notes: [t ? t.notes : '']
     });
+  }
+
+  onSymbolChange(val: string) {
+    this.showCustomSymbol = (val === 'OTHER');
+    if (this.showCustomSymbol) {
+      this.tradeForm.get('customSymbol')?.setValidators([Validators.required]);
+    } else {
+      this.tradeForm.get('customSymbol')?.clearValidators();
+    }
+    this.tradeForm.get('customSymbol')?.updateValueAndValidity();
   }
 
   onCancel(): void {
@@ -168,6 +194,11 @@ export class TradeDialogComponent implements OnInit {
         const day = String(d.getDate()).padStart(2, '0');
         formValue.date = `${year}-${month}-${day}`;
       }
+
+      if (formValue.symbol === 'OTHER') {
+        formValue.symbol = (formValue.customSymbol || '').toUpperCase().trim();
+      }
+      delete formValue.customSymbol;
 
       if (formValue.exitPremium === null || formValue.exitPremium === '') {
         delete formValue.exitPremium;
@@ -238,14 +269,10 @@ export class TradeDialogComponent implements OnInit {
 
           <!-- Filter Symbol -->
           <mat-form-field class="w-full">
-            <mat-label>Filter Index</mat-label>
+            <mat-label>Filter Symbol</mat-label>
             <mat-select [(ngModel)]="filterSymbol" (selectionChange)="applyFilters()">
-              <mat-option value="">All Indices</mat-option>
-              <mat-option value="NIFTY">NIFTY</mat-option>
-              <mat-option value="BANKNIFTY">BANKNIFTY</mat-option>
-              <mat-option value="FINNIFTY">FINNIFTY</mat-option>
-              <mat-option value="SENSEX">SENSEX</mat-option>
-              <mat-option value="BANKEX">BANKEX</mat-option>
+              <mat-option value="">All Symbols</mat-option>
+              <mat-option *ngFor="let sym of symbols" [value]="sym">{{ sym }}</mat-option>
             </mat-select>
           </mat-form-field>
 
@@ -399,6 +426,8 @@ export class TradingJournalComponent implements OnInit {
   filterText = '';
   filterSymbol = '';
   filterStatus = '';
+  // Dynamic list of distinct symbols from ledger
+  symbols: string[] = [];
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
@@ -413,6 +442,7 @@ export class TradingJournalComponent implements OnInit {
       this.dataSource.paginator = this.paginator;
       this.dataSource.sort = this.sort;
       this.applyFilters();
+      this.updateSymbols();
     });
   }
 
@@ -484,5 +514,10 @@ export class TradingJournalComponent implements OnInit {
     }
     // Reset file input
     event.target.value = '';
+  }
+  // Update the symbols list based on current trades
+  private updateSymbols(): void {
+    const allSymbols = this.journalService.trades().map((t: any) => t.symbol);
+    this.symbols = Array.from(new Set(allSymbols)).sort();
   }
 }

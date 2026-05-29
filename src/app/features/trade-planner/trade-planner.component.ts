@@ -57,6 +57,7 @@ import { IndexSymbol, OptionType } from '../../core/models/trade.model';
                   <mat-option value="FINNIFTY">FINNIFTY</mat-option>
                   <mat-option value="SENSEX">SENSEX</mat-option>
                   <mat-option value="BANKEX">BANKEX</mat-option>
+                  <mat-option value="OTHER">OTHER (Custom Stock/Index)</mat-option>
                 </mat-select>
               </mat-form-field>
 
@@ -67,6 +68,16 @@ import { IndexSymbol, OptionType } from '../../core/models/trade.model';
                   <mat-button-toggle value="PE" class="flex-1 font-bold text-rose-600">PE (Put)</mat-button-toggle>
                 </mat-button-toggle-group>
               </div>
+            </div>
+
+            <div *ngIf="showCustomSymbol">
+              <mat-form-field class="w-full">
+                <mat-label>Custom Symbol (e.g. RELIANCE, TCS, AAPL)</mat-label>
+                <input matInput formControlName="customSymbol" placeholder="Enter stock/index symbol">
+                <mat-error *ngIf="plannerForm.get('customSymbol')?.invalid">
+                  Symbol name is required.
+                </mat-error>
+              </mat-form-field>
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -247,6 +258,7 @@ export class TradePlannerComponent implements OnInit {
   };
 
   warnings: string[] = [];
+  showCustomSymbol = false;
 
   constructor(private fb: FormBuilder) {}
 
@@ -256,6 +268,7 @@ export class TradePlannerComponent implements OnInit {
     // Default form setup
     this.plannerForm = this.fb.group({
       symbol: ['NIFTY', [Validators.required]],
+      customSymbol: ['', []],
       optionType: ['CE' as OptionType, [Validators.required]],
       strike: [22200, [Validators.required, Validators.min(1)]],
       entryPremium: [150, [Validators.required, Validators.min(1)]],
@@ -266,7 +279,7 @@ export class TradePlannerComponent implements OnInit {
 
     // Handle initial configurations based on symbol change
     this.plannerForm.get('symbol')?.valueChanges.subscribe(sym => {
-      this.updateLotSizes(sym);
+      this.onSymbolChange(sym);
     });
 
     // Monitor changes and run calculations
@@ -275,13 +288,21 @@ export class TradePlannerComponent implements OnInit {
     });
 
     // Run initial
-    this.updateLotSizes('NIFTY');
+    this.onSymbolChange('NIFTY');
     this.evaluatePlannerEngine();
   }
 
-  updateLotSizes(symbol: IndexSymbol) {
+  onSymbolChange(val: string) {
+    this.showCustomSymbol = (val === 'OTHER');
+    if (this.showCustomSymbol) {
+      this.plannerForm.get('customSymbol')?.setValidators([Validators.required]);
+    } else {
+      this.plannerForm.get('customSymbol')?.clearValidators();
+    }
+    this.plannerForm.get('customSymbol')?.updateValueAndValidity();
+
     const lotSizesMap = this.riskService.lotSizes();
-    this.currentLotSize = lotSizesMap[symbol] || 25;
+    this.currentLotSize = lotSizesMap[val] || 25;
     
     // Auto adjust quantity to 1 lot if it was different
     this.plannerForm.get('quantity')?.patchValue(this.currentLotSize, { emitEvent: false });
@@ -320,11 +341,12 @@ export class TradePlannerComponent implements OnInit {
   evaluatePlannerEngine() {
     if (this.plannerForm.invalid) return;
 
-    const { symbol, entryPremium, stopLossPremium, quantity, rrRatio } = this.plannerForm.value;
+    const { symbol, customSymbol, entryPremium, stopLossPremium, quantity, rrRatio } = this.plannerForm.value;
+    const finalSymbol = symbol === 'OTHER' ? (customSymbol || '') : symbol;
 
     // 1. Checklist evaluate
     this.checklist = this.riskService.validateTrade(
-      symbol as IndexSymbol,
+      finalSymbol,
       entryPremium,
       stopLossPremium,
       quantity,
@@ -348,12 +370,13 @@ export class TradePlannerComponent implements OnInit {
       }
     }
 
-    const { symbol, optionType, strike, entryPremium, quantity, stopLossPremium, rrRatio } = this.plannerForm.value;
+    const { symbol, customSymbol, optionType, strike, entryPremium, quantity, stopLossPremium, rrRatio } = this.plannerForm.value;
     const targetPremium = this.getCalculatedTargetPrice();
+    const finalSymbol = symbol === 'OTHER' ? (customSymbol || '').toUpperCase().trim() : symbol;
 
     this.journalService.addTrade({
       date: new Date().toISOString().split('T')[0],
-      symbol: symbol as IndexSymbol,
+      symbol: finalSymbol,
       strike,
       optionType: optionType as OptionType,
       entryPremium,

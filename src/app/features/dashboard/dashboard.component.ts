@@ -149,12 +149,18 @@ import { Chart } from 'chart.js/auto';
                     <option value="FINNIFTY">FINNIFTY</option>
                     <option value="SENSEX">SENSEX</option>
                     <option value="BANKEX">BANKEX</option>
+                    <option value="OTHER">OTHER (Custom)</option>
                   </select>
                 </div>
                 <div class="flex flex-col">
                   <label class="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase mb-1">Lot Size</label>
                   <input type="text" readonly [value]="lotSize" class="w-full text-sm bg-slate-100 border dark:bg-slate-800/80 border-slate-200 dark:border-slate-800 text-slate-500 rounded-lg p-2">
                 </div>
+              </div>
+
+              <div *ngIf="showCustomSymbol" class="flex flex-col">
+                <label class="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase mb-1">Custom Symbol Name</label>
+                <input type="text" [(ngModel)]="valCustomSymbol" (input)="runValidation()" placeholder="e.g. RELIANCE" class="w-full text-sm bg-slate-50 border dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg p-2 focus:outline-none">
               </div>
 
               <div class="grid grid-cols-2 gap-3">
@@ -308,7 +314,10 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   isDailyLimitExceeded = false;
 
   // Calculator inputs inside validation checker widget
-  valSymbol: IndexSymbol = 'NIFTY';
+  // Calculator inputs inside validation checker widget
+  valSymbol: string = 'NIFTY';
+  valCustomSymbol = '';
+  showCustomSymbol = false;
   lotSize = 25;
   valEntry = 150;
   valSL = 135;
@@ -364,6 +373,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   updateLotSize() {
+    this.showCustomSymbol = (this.valSymbol === 'OTHER');
     const lotMap = this.settingsService.settings().lotSizes;
     this.lotSize = lotMap[this.valSymbol] || 25;
     this.valQuantity = this.lotSize;
@@ -371,8 +381,9 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
   runValidation() {
     this.updateLotSize();
+    const finalSymbol = this.valSymbol === 'OTHER' ? (this.valCustomSymbol || '') : this.valSymbol;
     this.checklist = this.riskService.validateTrade(
-      this.valSymbol,
+      finalSymbol,
       this.valEntry,
       this.valSL,
       this.valQuantity,

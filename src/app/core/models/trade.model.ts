@@ -6,6 +6,7 @@ export interface LotSizes {
   FINNIFTY: number;
   SENSEX: number;
   BANKEX: number;
+  [key: string]: number | undefined;
 }
 
 export type OptionType = 'CE' | 'PE';
@@ -13,7 +14,7 @@ export type OptionType = 'CE' | 'PE';
 export interface Trade {
   id: string;
   date: string; // ISO format string or YYYY-MM-DD
-  symbol: IndexSymbol;
+  symbol: string;
   strike: number;
   optionType: OptionType;
   entryPremium: number;
