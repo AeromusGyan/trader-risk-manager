@@ -329,7 +329,7 @@ export class TradeDialogComponent implements OnInit {
             <!-- Notes Column -->
             <ng-container matColumnDef="notes">
               <th mat-header-cell *matHeaderCellDef class="text-xs uppercase font-semibold text-slate-500 tracking-wider max-w-xs"> Notes </th>
-              <td mat-cell *matCellDef="let row" class="text-xs text-slate-500 dark:text-slate-400 max-w-xs truncate" [matTooltip]="row.notes">
+              <td mat-cell *matCellDef="let row" class="text-xs text-slate-500 dark:text-slate-400 max-w-xs truncate" [matTooltip]="row.notes" [matTooltipDisabled]="isMobile">
                 {{ row.notes || '--' }}
               </td>
             </ng-container>
@@ -387,6 +387,10 @@ export class TradingJournalComponent implements OnInit {
   private readonly journalService = inject(JournalService);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
+
+  get isMobile(): boolean {
+    return window.innerWidth < 1024;
+  }
 
   displayedColumns: string[] = ['date', 'contract', 'pricing', 'quantity', 'slTarget', 'netPL', 'notes', 'status', 'actions'];
   dataSource = new MatTableDataSource<Trade>([]);
