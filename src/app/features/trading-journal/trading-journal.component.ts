@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, ViewChild, signal, computed } from '@angular/core';
+import { Component, inject, OnInit, ViewChild, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators, FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -15,12 +15,12 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { JournalService } from '../../core/services/journal.service';
 import { RiskService } from '../../core/services/risk.service';
-import { Trade, IndexSymbol, OptionType } from '../../core/models/trade.model';
+import { Trade, IndexSymbol, OptionType, PAPER_STRATEGIES } from '../../core/models/trade.model';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { provideNativeDateAdapter } from '@angular/material/core';
 import { Inject } from '@angular/core';
 
-// --- Dialog Component to Add/Edit Trade ---
+// ─── Trade Dialog ─────────────────────────────────────────────────────────────
 @Component({
   selector: 'app-trade-dialog',
   standalone: true,
@@ -36,10 +36,13 @@ import { Inject } from '@angular/core';
   ],
   providers: [provideNativeDateAdapter()],
   template: `
-    <h2 mat-dialog-title class="text-xl font-bold border-b pb-2">
+    <h2 mat-dialog-title class="text-xl font-bold border-b pb-2 flex items-center gap-2">
+      <span *ngIf="isPaper" class="inline-flex items-center gap-1 text-amber-600 text-sm font-bold bg-amber-50 border border-amber-200 rounded-lg px-2 py-0.5">
+        🧪 PAPER
+      </span>
       {{ data.trade ? 'Edit Trade' : 'Log New Trade' }}
     </h2>
-    <mat-dialog-content class="pt-4">
+    <mat-dialog-content class="pt-4" style="max-height:70vh;overflow-y:auto;">
       <form [formGroup]="tradeForm" class="space-y-4">
         <div class="grid grid-cols-2 gap-4">
           <mat-form-field class="w-full">
@@ -116,6 +119,27 @@ import { Inject } from '@angular/core';
           <input matInput type="number" formControlName="exitPremium" placeholder="Not exited yet">
         </mat-form-field>
 
+        <!-- Strategy (shows for all, highlighted for paper) -->
+        <mat-form-field class="w-full">
+          <mat-label>{{ isPaper ? '🧪 Strategy (Paper Trade)' : 'Strategy (optional)' }}</mat-label>
+          <mat-select formControlName="strategy">
+            <mat-option value="">— No Strategy —</mat-option>
+            <mat-optgroup label="Predefined Strategies">
+              <mat-option *ngFor="let s of strategies" [value]="s">{{ s }}</mat-option>
+            </mat-optgroup>
+            <mat-optgroup label="Custom">
+              <mat-option value="__custom__">Other (type below)</mat-option>
+            </mat-optgroup>
+          </mat-select>
+        </mat-form-field>
+
+        <div *ngIf="tradeForm.get('strategy')?.value === '__custom__'">
+          <mat-form-field class="w-full">
+            <mat-label>Custom Strategy Name</mat-label>
+            <input matInput formControlName="customStrategy" placeholder="e.g. My Momentum Setup">
+          </mat-form-field>
+        </div>
+
         <mat-form-field class="w-full">
           <mat-label>Notes</mat-label>
           <textarea matInput formControlName="notes" rows="2" placeholder="Reasons for trade, mistakes made, feelings..."></textarea>
@@ -124,8 +148,11 @@ import { Inject } from '@angular/core';
     </mat-dialog-content>
     <mat-dialog-actions class="flex justify-end gap-2 border-t pt-2">
       <button mat-button (click)="onCancel()">Cancel</button>
-      <button mat-flat-button color="primary" class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl" [disabled]="tradeForm.invalid" (click)="onSave()">
-        Save Trade
+      <button mat-flat-button color="primary"
+        class="rounded-xl text-white"
+        [ngClass]="isPaper ? 'bg-amber-500 hover:bg-amber-600' : 'bg-indigo-600 hover:bg-indigo-700'"
+        [disabled]="tradeForm.invalid" (click)="onSave()">
+        {{ isPaper ? '🧪 Save Paper Trade' : 'Save Trade' }}
       </button>
     </mat-dialog-actions>
   `
@@ -133,12 +160,17 @@ import { Inject } from '@angular/core';
 export class TradeDialogComponent implements OnInit {
   tradeForm!: FormGroup;
   showCustomSymbol = false;
+  strategies = PAPER_STRATEGIES;
+  isPaper: boolean;
 
   constructor(
     private fb: FormBuilder,
     public dialogRef: MatDialogRef<TradeDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: { trade?: Trade }
-  ) {}
+    @Inject(MAT_DIALOG_DATA) public data: { trade?: Trade; isPaper?: boolean }
+  ) {
+    this.isPaper = !!data.isPaper;
+    this.dialogRef.disableClose = true;
+  }
 
   ngOnInit() {
     let initialDate = new Date();
@@ -153,10 +185,16 @@ export class TradeDialogComponent implements OnInit {
     const isCustomSymbol = t && !['NIFTY', 'BANKNIFTY', 'FINNIFTY', 'SENSEX', 'BANKEX'].includes(t.symbol);
     this.showCustomSymbol = !!isCustomSymbol;
 
+    const existingStrategy = t?.strategy || '';
+    const isPredefined = PAPER_STRATEGIES.includes(existingStrategy as any);
+    const strategyVal = existingStrategy
+      ? (isPredefined ? existingStrategy : '__custom__')
+      : '';
+
     this.tradeForm = this.fb.group({
       date: [initialDate, [Validators.required]],
       symbol: [t ? (isCustomSymbol ? 'OTHER' : t.symbol) : 'NIFTY', [Validators.required]],
-      customSymbol: [isCustomSymbol ? t.symbol : '', isCustomSymbol ? [Validators.required] : []],
+      customSymbol: [isCustomSymbol ? t!.symbol : '', isCustomSymbol ? [Validators.required] : []],
       strike: [t ? t.strike : 22200, [Validators.required, Validators.min(1)]],
       optionType: [t ? t.optionType : 'CE', [Validators.required]],
       entryPremium: [t ? t.entryPremium : 150, [Validators.required, Validators.min(0.1)]],
@@ -164,6 +202,8 @@ export class TradeDialogComponent implements OnInit {
       stopLossPremium: [t ? t.stopLossPremium : 130, [Validators.required, Validators.min(0)]],
       targetPremium: [t ? t.targetPremium : 190, [Validators.required, Validators.min(0)]],
       exitPremium: [t && t.exitPremium !== undefined ? t.exitPremium : null],
+      strategy: [strategyVal],
+      customStrategy: [!isPredefined && existingStrategy ? existingStrategy : ''],
       notes: [t ? t.notes : '']
     });
   }
@@ -185,30 +225,38 @@ export class TradeDialogComponent implements OnInit {
   onSave(): void {
     if (this.tradeForm.valid) {
       const formValue = { ...this.tradeForm.value };
-      
-      // Convert Date object to YYYY-MM-DD string timezone-safely
+
+      // Date → YYYY-MM-DD
       if (formValue.date instanceof Date) {
         const d = formValue.date;
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        formValue.date = `${year}-${month}-${day}`;
+        formValue.date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       }
 
+      // Custom symbol
       if (formValue.symbol === 'OTHER') {
         formValue.symbol = (formValue.customSymbol || '').toUpperCase().trim();
       }
       delete formValue.customSymbol;
 
+      // Strategy resolve
+      if (formValue.strategy === '__custom__') {
+        formValue.strategy = (formValue.customStrategy || '').trim() || undefined;
+      } else if (!formValue.strategy) {
+        formValue.strategy = undefined;
+      }
+      delete formValue.customStrategy;
+
+      // Empty exit premium
       if (formValue.exitPremium === null || formValue.exitPremium === '') {
         delete formValue.exitPremium;
       }
+
       this.dialogRef.close(formValue);
     }
   }
 }
 
-// --- Main Trading Journal Component ---
+// ─── Main Trading Journal Component ──────────────────────────────────────────
 @Component({
   selector: 'app-trading-journal',
   standalone: true,
@@ -231,35 +279,53 @@ export class TradeDialogComponent implements OnInit {
   ],
   template: `
     <div class="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
+
+      <!-- Mode Banner -->
+      <div *ngIf="isPaper()"
+        class="flex items-center gap-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-2xl">
+        <span class="text-2xl">🧪</span>
+        <div>
+          <div class="text-sm font-bold text-amber-700">Paper Trading Journal</div>
+          <div class="text-xs text-amber-600">You are viewing your simulated paper trades. Switch to LIVE mode in the toolbar to view real trades.</div>
+        </div>
+      </div>
+
       <!-- Header Area -->
       <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
-          <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900">Trading Journal</h1>
-          <p class="text-slate-500 mt-1">Review your historical trades, analyze mistakes, and export data.</p>
+          <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight"
+            [ngClass]="isPaper() ? 'text-amber-700' : 'text-slate-900'">
+            {{ isPaper() ? '🧪 Paper Journal' : 'Trading Journal' }}
+          </h1>
+          <p class="text-slate-500 mt-1">
+            {{ isPaper() ? 'Track your paper trades and test strategies risk-free.' : 'Review your historical trades, analyze mistakes, and export data.' }}
+          </p>
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
-          <!-- CSV Import -->
           <button mat-stroked-button class="border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl px-4 py-2" (click)="csvInput.click()">
             <mat-icon class="mr-2">upload</mat-icon>Import CSV
           </button>
           <input #csvInput type="file" (change)="onCSVImport($event)" accept=".csv" class="hidden">
 
-          <!-- CSV Export -->
           <button mat-stroked-button class="border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl px-4 py-2" (click)="exportCSV()">
             <mat-icon class="mr-2">download</mat-icon>Export CSV
           </button>
 
-          <!-- Log Trade -->
-          <button mat-flat-button color="primary" class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md px-4 py-2" (click)="openTradeDialog()">
-            <mat-icon class="mr-2">add</mat-icon>Log Trade
+          <button mat-flat-button
+            class="text-white rounded-xl shadow-md px-4 py-2"
+            [ngClass]="isPaper() ? 'bg-amber-500 hover:bg-amber-600' : 'bg-indigo-600 hover:bg-indigo-700'"
+            (click)="openTradeDialog()">
+            <mat-icon class="mr-2">add</mat-icon>
+            {{ isPaper() ? 'Log Paper Trade' : 'Log Trade' }}
           </button>
         </div>
       </div>
 
-      <!-- Filters & Actions Card -->
-      <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <!-- Filters Card -->
+      <div class="bg-white rounded-2xl border shadow-sm p-4"
+        [ngClass]="isPaper() ? 'border-amber-200' : 'border-slate-200/80'">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <!-- Search Text -->
           <mat-form-field class="w-full">
             <mat-label>Search Notes/Strike</mat-label>
@@ -287,28 +353,49 @@ export class TradeDialogComponent implements OnInit {
               <mat-option value="BREAKEVEN">Breakeven</mat-option>
             </mat-select>
           </mat-form-field>
+
+          <!-- Filter Strategy (visible in paper mode) -->
+          <mat-form-field class="w-full" *ngIf="isPaper()">
+            <mat-label>Filter Strategy</mat-label>
+            <mat-select [(ngModel)]="filterStrategy" (selectionChange)="applyFilters()">
+              <mat-option value="">All Strategies</mat-option>
+              <mat-option *ngFor="let s of strategyList" [value]="s">{{ s }}</mat-option>
+            </mat-select>
+          </mat-form-field>
         </div>
       </div>
 
       <!-- Table Card -->
-      <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+      <div class="bg-white rounded-2xl border shadow-sm overflow-hidden"
+        [ngClass]="isPaper() ? 'border-amber-200' : 'border-slate-200/80'">
+        <!-- Paper mode header tint -->
+        <div *ngIf="isPaper()" class="h-1 bg-gradient-to-r from-amber-400 to-amber-500"></div>
+
         <div class="overflow-x-auto">
-          <table mat-table [dataSource]="dataSource" matSort class="w-full min-w-[1000px]">
+          <table mat-table [dataSource]="dataSource" matSort class="w-full min-w-[1050px]">
+
             <!-- Date Column -->
             <ng-container matColumnDef="date">
               <th mat-header-cell *matHeaderCellDef mat-sort-header class="text-xs uppercase font-semibold text-slate-500 tracking-wider"> Date </th>
               <td mat-cell *matCellDef="let row" class="text-sm font-medium"> {{ row.date }} </td>
             </ng-container>
 
-            <!-- Symbol & Strike Column -->
+            <!-- Contract Column -->
             <ng-container matColumnDef="contract">
               <th mat-header-cell *matHeaderCellDef mat-sort-header class="text-xs uppercase font-semibold text-slate-500 tracking-wider"> Contract </th>
               <td mat-cell *matCellDef="let row" class="text-sm">
-                <span class="font-bold text-slate-700 dark:text-slate-300">{{ row.symbol }}</span>
+                <span class="font-bold text-slate-700">{{ row.symbol }}</span>
                 <span class="ml-1 text-slate-400">{{ row.strike }}</span>
-                <span class="ml-1 text-xs px-1.5 py-0.5 rounded font-bold" [ngClass]="row.optionType === 'CE' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400' : 'bg-rose-50 text-rose-700 dark:bg-rose-950/20 dark:text-rose-400'">
+                <span class="ml-1 text-xs px-1.5 py-0.5 rounded font-bold"
+                  [ngClass]="row.optionType === 'CE' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'">
                   {{ row.optionType }}
                 </span>
+                <!-- Strategy tag (paper mode) -->
+                <div *ngIf="row.strategy" class="mt-0.5">
+                  <span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 font-semibold">
+                    {{ row.strategy }}
+                  </span>
+                </div>
               </td>
             </ng-container>
 
@@ -316,9 +403,9 @@ export class TradeDialogComponent implements OnInit {
             <ng-container matColumnDef="pricing">
               <th mat-header-cell *matHeaderCellDef mat-sort-header class="text-xs uppercase font-semibold text-slate-500 tracking-wider"> Entry / Exit </th>
               <td mat-cell *matCellDef="let row" class="text-sm">
-                <span class="font-semibold text-slate-700 dark:text-slate-300">₹{{ row.entryPremium }}</span>
+                <span class="font-semibold text-slate-700">₹{{ row.entryPremium }}</span>
                 <span class="text-slate-400 mx-1">→</span>
-                <span class="font-semibold" [ngClass]="row.exitPremium !== undefined ? 'text-slate-700 dark:text-slate-300' : 'text-slate-400 italic'">
+                <span class="font-semibold" [ngClass]="row.exitPremium !== undefined ? 'text-slate-700' : 'text-slate-400 italic'">
                   {{ row.exitPremium !== undefined ? '₹' + row.exitPremium : 'Open' }}
                 </span>
               </td>
@@ -327,7 +414,7 @@ export class TradeDialogComponent implements OnInit {
             <!-- Quantity Column -->
             <ng-container matColumnDef="quantity">
               <th mat-header-cell *matHeaderCellDef mat-sort-header class="text-xs uppercase font-semibold text-slate-500 tracking-wider"> Qty </th>
-              <td mat-cell *matCellDef="let row" class="text-sm font-semibold text-slate-600 dark:text-slate-400"> {{ row.quantity }} </td>
+              <td mat-cell *matCellDef="let row" class="text-sm font-semibold text-slate-600"> {{ row.quantity }} </td>
             </ng-container>
 
             <!-- SL & Target Column -->
@@ -344,19 +431,19 @@ export class TradeDialogComponent implements OnInit {
             <ng-container matColumnDef="netPL">
               <th mat-header-cell *matHeaderCellDef mat-sort-header class="text-xs uppercase font-semibold text-slate-500 tracking-wider"> Net P&L </th>
               <td mat-cell *matCellDef="let row" class="text-sm font-bold">
-                <span *ngIf="row.netPL !== undefined" [ngClass]="row.netPL > 0 ? 'text-emerald-600 dark:text-emerald-400' : row.netPL < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500'">
+                <span *ngIf="row.netPL !== undefined"
+                  [ngClass]="row.netPL > 0 ? 'text-emerald-600' : row.netPL < 0 ? 'text-rose-600' : 'text-slate-500'">
                   {{ row.netPL > 0 ? '+' : '' }}₹{{ row.netPL | number:'1.2-2' }}
                 </span>
-                <span *ngIf="row.netPL === undefined" class="text-slate-400 italic font-medium">
-                  Open
-                </span>
+                <span *ngIf="row.netPL === undefined" class="text-slate-400 italic font-medium">Open</span>
               </td>
             </ng-container>
 
             <!-- Notes Column -->
             <ng-container matColumnDef="notes">
               <th mat-header-cell *matHeaderCellDef class="text-xs uppercase font-semibold text-slate-500 tracking-wider max-w-xs"> Notes </th>
-              <td mat-cell *matCellDef="let row" class="text-xs text-slate-500 dark:text-slate-400 max-w-xs truncate" [matTooltip]="row.notes" [matTooltipDisabled]="isMobile">
+              <td mat-cell *matCellDef="let row" class="text-xs text-slate-500 max-w-xs truncate"
+                [matTooltip]="row.notes" [matTooltipDisabled]="isMobile">
                 {{ row.notes || '--' }}
               </td>
             </ng-container>
@@ -366,10 +453,10 @@ export class TradeDialogComponent implements OnInit {
               <th mat-header-cell *matHeaderCellDef mat-sort-header class="text-xs uppercase font-semibold text-slate-500 tracking-wider"> Status </th>
               <td mat-cell *matCellDef="let row">
                 <span class="text-xs font-bold px-2 py-1 rounded-full" [ngClass]="{
-                  'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400': row.status === 'WIN',
-                  'bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-400': row.status === 'LOSS',
-                  'bg-slate-100 text-slate-800 dark:bg-slate-900/40 dark:text-slate-400': row.status === 'BREAKEVEN',
-                  'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-400': row.status === 'OPEN'
+                  'bg-emerald-100 text-emerald-800': row.status === 'WIN',
+                  'bg-rose-100 text-rose-800': row.status === 'LOSS',
+                  'bg-slate-100 text-slate-800': row.status === 'BREAKEVEN',
+                  'bg-indigo-100 text-indigo-800': row.status === 'OPEN'
                 }">
                   {{ row.status }}
                 </span>
@@ -380,124 +467,125 @@ export class TradeDialogComponent implements OnInit {
             <ng-container matColumnDef="actions">
               <th mat-header-cell *matHeaderCellDef class="text-xs uppercase font-semibold text-slate-500 tracking-wider w-24"> Actions </th>
               <td mat-cell *matCellDef="let row" class="space-x-1">
-                <button mat-icon-button class="text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-950/30" (click)="openTradeDialog(row)">
+                <button mat-icon-button class="text-indigo-600 hover:bg-indigo-50" (click)="openTradeDialog(row)">
                   <mat-icon class="scale-90">edit</mat-icon>
                 </button>
-                <button mat-icon-button class="text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30" (click)="deleteTrade(row.id)">
+                <button mat-icon-button class="text-rose-600 hover:bg-rose-50" (click)="deleteTrade(row.id)">
                   <mat-icon class="scale-90">delete</mat-icon>
                 </button>
               </td>
             </ng-container>
 
             <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-            <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="hover:bg-slate-50 dark:hover:bg-slate-900/40 transition-colors duration-150"></tr>
-            
-            <!-- Row shown when there is no matching data. -->
+            <tr mat-row *matRowDef="let row; columns: displayedColumns;"
+              class="hover:bg-slate-50 transition-colors duration-150"
+              [ngClass]="isPaper() ? 'hover:bg-amber-50/40' : ''"></tr>
+
             <tr class="mat-row" *matNoDataRow>
-              <td class="mat-cell p-8 text-center text-slate-400 dark:text-slate-500" colspan="9">
-                No trades match your search/filter parameters.
+              <td class="mat-cell p-8 text-center text-slate-400" [attr.colspan]="displayedColumns.length">
+                <div class="flex flex-col items-center gap-2">
+                  <mat-icon class="text-4xl text-slate-300">{{ isPaper() ? 'science' : 'inbox' }}</mat-icon>
+                  <span>{{ isPaper() ? 'No paper trades yet. Log your first simulated trade!' : 'No trades match your search/filter parameters.' }}</span>
+                </div>
               </td>
             </tr>
           </table>
         </div>
-        <mat-paginator [pageSizeOptions]="[5, 10, 20]" showFirstLastButtons class="border-t dark:border-slate-800"></mat-paginator>
+        <mat-paginator [pageSizeOptions]="[5, 10, 20]" showFirstLastButtons class="border-t border-slate-100"></mat-paginator>
       </div>
     </div>
   `,
-  styles: [`
-    :host {
-      display: block;
-    }
-  `]
+  styles: [`:host { display: block; }`]
 })
 export class TradingJournalComponent implements OnInit {
   private readonly journalService = inject(JournalService);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
 
-  get isMobile(): boolean {
-    return window.innerWidth < 1024;
-  }
+  isPaper = computed(() => this.journalService.tradeMode() === 'PAPER');
+
+  get isMobile(): boolean { return window.innerWidth < 1024; }
 
   displayedColumns: string[] = ['date', 'contract', 'pricing', 'quantity', 'slTarget', 'netPL', 'notes', 'status', 'actions'];
   dataSource = new MatTableDataSource<Trade>([]);
 
-  // Filter models
   filterText = '';
   filterSymbol = '';
   filterStatus = '';
-  // Dynamic list of distinct symbols from ledger
+  filterStrategy = '';
   symbols: string[] = [];
+  strategyList: string[] = [];
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
+
+  constructor() {
+    // React to mode changes and reload
+    effect(() => {
+      // Accessing activeTrades() registers this as a reactive dependency
+      this.journalService.activeTrades();
+      this.refreshDataSource();
+    });
+  }
 
   ngOnInit() {
     this.refreshDataSource();
   }
 
   refreshDataSource() {
-    this.dataSource.data = this.journalService.trades();
+    const data = this.journalService.activeTrades();
+    this.dataSource.data = data;
+
     this.dataSource.sortingDataAccessor = (item: Trade, property: string) => {
       switch (property) {
-        case 'date':
-          return new Date(item.date);
-        case 'contract':
-          return `${item.symbol} ${item.strike}`;
-        case 'pricing':
-          return item.entryPremium;
-        case 'quantity':
-          return item.quantity;
-        case 'slTarget':
-          return item.stopLossPremium;
-        case 'netPL':
-          return item.netPL ?? 0;
-        case 'status':
-          return item.status;
-        default:
-          return (item as any)[property];
+        case 'date': return item.date;
+        case 'contract': return `${item.symbol} ${item.strike}`;
+        case 'pricing': return item.entryPremium;
+        case 'quantity': return item.quantity;
+        case 'netPL': return item.netPL ?? 0;
+        case 'status': return item.status;
+        default: return (item as any)[property];
       }
     };
+
     setTimeout(() => {
       this.dataSource.paginator = this.paginator;
       this.dataSource.sort = this.sort;
       this.applyFilters();
       this.updateSymbols();
+      this.updateStrategyList();
     });
   }
 
   applyFilters() {
-    this.dataSource.filterPredicate = (data: Trade, filter: string) => {
-      const textMatch = !this.filterText ? true : 
-        (data.notes || '').toLowerCase().includes(this.filterText.toLowerCase()) || 
-        data.strike.toString().includes(this.filterText);
-      
+    this.dataSource.filterPredicate = (data: Trade) => {
+      const textMatch = !this.filterText ? true :
+        (data.notes || '').toLowerCase().includes(this.filterText.toLowerCase()) ||
+        data.strike.toString().includes(this.filterText) ||
+        data.symbol.toLowerCase().includes(this.filterText.toLowerCase());
       const symbolMatch = !this.filterSymbol ? true : data.symbol === this.filterSymbol;
       const statusMatch = !this.filterStatus ? true : data.status === this.filterStatus;
-
-      return textMatch && symbolMatch && statusMatch;
+      const strategyMatch = !this.filterStrategy ? true : (data.strategy || '') === this.filterStrategy;
+      return textMatch && symbolMatch && statusMatch && strategyMatch;
     };
-    
-    // Trigger filter refresh
     this.dataSource.filter = 'trigger';
   }
 
   openTradeDialog(trade?: Trade) {
     const dialogRef = this.dialog.open(TradeDialogComponent, {
-      width: '450px',
-      data: { trade }
+      width: '500px',
+      disableClose: true,
+      data: { trade, isPaper: this.isPaper() }
     });
 
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
         if (trade) {
-          // Update mode
           this.journalService.updateTrade(trade.id, result);
           this.snackBar.open('Trade updated successfully', 'Close', { duration: 3000 });
         } else {
-          // Add mode
           this.journalService.addTrade(result);
-          this.snackBar.open('Trade logged successfully', 'Close', { duration: 3000 });
+          this.snackBar.open(this.isPaper() ? '🧪 Paper trade logged!' : 'Trade logged successfully', 'Close', { duration: 3000 });
         }
         this.refreshDataSource();
       }
@@ -512,9 +600,7 @@ export class TradingJournalComponent implements OnInit {
     }
   }
 
-  exportCSV() {
-    this.journalService.exportToCSV();
-  }
+  exportCSV() { this.journalService.exportToCSV(); }
 
   onCSVImport(event: any) {
     const file = event.target.files[0];
@@ -532,12 +618,18 @@ export class TradingJournalComponent implements OnInit {
       };
       reader.readAsText(file);
     }
-    // Reset file input
     event.target.value = '';
   }
-  // Update the symbols list based on current trades
-  private updateSymbols(): void {
-    const allSymbols = this.journalService.trades().map((t: any) => t.symbol);
+
+  private updateSymbols() {
+    const allSymbols = this.journalService.activeTrades().map(t => t.symbol);
     this.symbols = Array.from(new Set(allSymbols)).sort();
+  }
+
+  private updateStrategyList() {
+    const all = this.journalService.activeTrades()
+      .map(t => t.strategy)
+      .filter((s): s is string => !!s);
+    this.strategyList = Array.from(new Set(all)).sort();
   }
 }

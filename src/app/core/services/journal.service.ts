@@ -1,29 +1,50 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
-import { Trade, IndexSymbol, OptionType } from '../models/trade.model';
+import { Trade, IndexSymbol, OptionType, TradeType } from '../models/trade.model';
 import { SettingsService } from './settings.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class JournalService {
-  private readonly JOURNAL_KEY = 'trader_risk_journal';
+  private readonly LIVE_JOURNAL_KEY = 'trader_risk_journal';
+  private readonly PAPER_JOURNAL_KEY = 'trader_risk_paper_journal';
+  private readonly MODE_KEY = 'trader_risk_trade_mode';
   private readonly settingsService = inject(SettingsService);
 
-  // Core Signal holding all trades
+  // ─── Mode Signal (LIVE | PAPER) ─────────────────────────────────────────────
+  tradeMode = signal<TradeType>(
+    (localStorage.getItem(this.MODE_KEY) as TradeType) || 'LIVE'
+  );
+
+  setTradeMode(mode: TradeType) {
+    this.tradeMode.set(mode);
+    localStorage.setItem(this.MODE_KEY, mode);
+  }
+
+  // ─── Trade Signals ───────────────────────────────────────────────────────────
+  /** All LIVE trades */
   trades = signal<Trade[]>([]);
+  /** All PAPER trades */
+  paperTrades = signal<Trade[]>([]);
+
+  /** Active trades based on current mode */
+  activeTrades = computed(() =>
+    this.tradeMode() === 'LIVE' ? this.trades() : this.paperTrades()
+  );
 
   constructor() {
     this.loadTrades();
+    this.loadPaperTrades();
   }
 
+  // ─── Load / Save ─────────────────────────────────────────────────────────────
   private loadTrades() {
-    const saved = localStorage.getItem(this.JOURNAL_KEY);
+    const saved = localStorage.getItem(this.LIVE_JOURNAL_KEY);
     if (saved) {
       try {
-        const parsed = JSON.parse(saved);
-        this.trades.set(parsed);
+        this.trades.set(JSON.parse(saved));
       } catch (e) {
-        console.error('Failed to parse trades journal', e);
+        console.error('Failed to parse live trades journal', e);
         this.loadSampleData();
       }
     } else {
@@ -31,56 +52,85 @@ export class JournalService {
     }
   }
 
-  saveTrades(updatedTrades: Trade[]) {
-    this.trades.set(updatedTrades);
-    localStorage.setItem(this.JOURNAL_KEY, JSON.stringify(updatedTrades));
+  private loadPaperTrades() {
+    const saved = localStorage.getItem(this.PAPER_JOURNAL_KEY);
+    if (saved) {
+      try {
+        this.paperTrades.set(JSON.parse(saved));
+      } catch (e) {
+        console.error('Failed to parse paper trades journal', e);
+        this.paperTrades.set([]);
+      }
+    } else {
+      this.paperTrades.set([]);
+    }
   }
 
+  saveTrades(updatedTrades: Trade[]) {
+    this.trades.set(updatedTrades);
+    localStorage.setItem(this.LIVE_JOURNAL_KEY, JSON.stringify(updatedTrades));
+  }
+
+  savePaperTrades(updatedTrades: Trade[]) {
+    this.paperTrades.set(updatedTrades);
+    localStorage.setItem(this.PAPER_JOURNAL_KEY, JSON.stringify(updatedTrades));
+  }
+
+  // ─── CRUD (mode-aware) ───────────────────────────────────────────────────────
   addTrade(trade: Omit<Trade, 'id' | 'netPL' | 'status'>) {
     const newTrade: Trade = this.calculateTradePLAndStatus({
       ...trade,
-      id: crypto.randomUUID()
+      id: crypto.randomUUID(),
+      tradeType: this.tradeMode()
     });
 
-    const current = this.trades();
-    this.saveTrades([newTrade, ...current]);
+    if (this.tradeMode() === 'LIVE') {
+      this.saveTrades([newTrade, ...this.trades()]);
+    } else {
+      this.savePaperTrades([newTrade, ...this.paperTrades()]);
+    }
   }
 
   updateTrade(id: string, updatedFields: Partial<Trade>) {
-    const current = this.trades();
-    const index = current.findIndex(t => t.id === id);
-    if (index !== -1) {
-      const merged = { ...current[index], ...updatedFields };
-      const updatedTrade = this.calculateTradePLAndStatus(merged);
-      const copy = [...current];
-      copy[index] = updatedTrade;
-      this.saveTrades(copy);
+    if (this.tradeMode() === 'LIVE') {
+      const current = this.trades();
+      const index = current.findIndex(t => t.id === id);
+      if (index !== -1) {
+        const copy = [...current];
+        copy[index] = this.calculateTradePLAndStatus({ ...copy[index], ...updatedFields });
+        this.saveTrades(copy);
+      }
+    } else {
+      const current = this.paperTrades();
+      const index = current.findIndex(t => t.id === id);
+      if (index !== -1) {
+        const copy = [...current];
+        copy[index] = this.calculateTradePLAndStatus({ ...copy[index], ...updatedFields });
+        this.savePaperTrades(copy);
+      }
     }
   }
 
   deleteTrade(id: string) {
-    const current = this.trades();
-    this.saveTrades(current.filter(t => t.id !== id));
+    if (this.tradeMode() === 'LIVE') {
+      this.saveTrades(this.trades().filter(t => t.id !== id));
+    } else {
+      this.savePaperTrades(this.paperTrades().filter(t => t.id !== id));
+    }
   }
 
   clearJournal() {
-    this.saveTrades([]);
+    if (this.tradeMode() === 'LIVE') {
+      this.saveTrades([]);
+    } else {
+      this.savePaperTrades([]);
+    }
   }
 
   private calculateTradePLAndStatus(trade: any): Trade {
     if (trade.exitPremium !== undefined && trade.exitPremium !== null) {
-      const diff = trade.optionType === 'CE' 
-        ? trade.exitPremium - trade.entryPremium 
-        : trade.entryPremium - trade.exitPremium; // Options can be bought/sold, let's assume default option buying: exitPremium - entryPremium
-      
-      // The prompt mentions "Option Buying Mode: Special mode for beginners"
-      // and for trade planner CE/PE. Typically option buyers profit when CE rises or PE rises.
-      // So regardless of whether it is CE or PE: if you BUY CE premium at 100 and exit at 120, P&L is +20.
-      // If you BUY PE premium at 100 and exit at 120, P&L is also +20 (since you bought PE premium).
-      // So net P&L = (exitPremium - entryPremium) * quantity. Let's make it standard: (exitPremium - entryPremium) * quantity.
       const profitLoss = (trade.exitPremium - trade.entryPremium) * trade.quantity;
       trade.netPL = profitLoss;
-      
       if (profitLoss > 0) {
         trade.status = 'WIN';
       } else if (profitLoss < 0) {
@@ -95,24 +145,19 @@ export class JournalService {
     return trade;
   }
 
-  // Reactive Computed Stats for performance dashboard
+  // ─── Reactive Computed Stats (mode-aware, use activeTrades) ─────────────────
   stats = computed(() => {
-    const list = this.trades();
+    const list = this.activeTrades();
     const closedTrades = list.filter(t => t.status !== 'OPEN');
     const total = closedTrades.length;
 
-    let wins = 0;
-    let losses = 0;
-    let totalPL = 0;
-    let largestProfit = 0;
-    let largestLoss = 0;
-    let totalWinAmount = 0;
-    let totalLossAmount = 0;
+    let wins = 0, losses = 0, totalPL = 0;
+    let largestProfit = 0, largestLoss = 0;
+    let totalWinAmount = 0, totalLossAmount = 0;
 
     closedTrades.forEach(t => {
       const pl = t.netPL || 0;
       totalPL += pl;
-
       if (pl > 0) {
         wins++;
         totalWinAmount += pl;
@@ -120,7 +165,7 @@ export class JournalService {
       } else if (pl < 0) {
         losses++;
         totalLossAmount += Math.abs(pl);
-        if (pl < largestLoss) largestLoss = pl; // represents largest negative value
+        if (pl < largestLoss) largestLoss = pl;
       }
     });
 
@@ -143,67 +188,74 @@ export class JournalService {
     };
   });
 
-  // Today's P&L calculation (useful for Daily Risk Manager limit warning)
   todayPL = computed(() => {
-    const list = this.trades();
+    const list = this.activeTrades();
     const todayStr = new Date().toISOString().split('T')[0];
-    
     return list
       .filter(t => t.date === todayStr && t.netPL !== undefined)
       .reduce((sum, t) => sum + (t.netPL || 0), 0);
   });
 
-  // Monthly breakdown of P&L for bar chart
   monthlyPL = computed(() => {
-    const list = this.trades().filter(t => t.status !== 'OPEN');
+    const list = this.activeTrades().filter(t => t.status !== 'OPEN');
     const monthlyMap = new Map<string, number>();
-
     list.forEach(t => {
-      // Date is format YYYY-MM-DD
-      const month = t.date.substring(0, 7); // YYYY-MM
-      const current = monthlyMap.get(month) || 0;
-      monthlyMap.set(month, current + (t.netPL || 0));
+      const month = t.date.substring(0, 7);
+      monthlyMap.set(month, (monthlyMap.get(month) || 0) + (t.netPL || 0));
     });
-
     const sortedMonths = Array.from(monthlyMap.keys()).sort();
     return sortedMonths.map(month => {
-      // Convert 2026-05 to "May 2026" or similar
       const [year, m] = month.split('-');
       const date = new Date(parseInt(year), parseInt(m) - 1, 1);
       const label = date.toLocaleString('default', { month: 'short', year: '2-digit' });
-      return {
-        label,
-        value: monthlyMap.get(month) || 0
-      };
+      return { label, value: monthlyMap.get(month) || 0 };
     });
   });
 
-  // Data series for the Equity Curve
   equityCurve = computed(() => {
-    const list = [...this.trades()]
+    const list = [...this.activeTrades()]
       .filter(t => t.status !== 'OPEN')
-      .reverse(); // Chronological order (oldest to newest)
-
+      .reverse();
     const startingCapital = this.settingsService.settings().capital;
     const dataPoints: { label: string; value: number }[] = [{ label: 'Start', value: startingCapital }];
-    
     let runningCapital = startingCapital;
     list.forEach((t, i) => {
       runningCapital += (t.netPL || 0);
-      dataPoints.push({
-        label: `Trade ${i + 1}`,
-        value: runningCapital
-      });
+      dataPoints.push({ label: `Trade ${i + 1}`, value: runningCapital });
     });
-
     return dataPoints;
   });
 
-  // Pre-load sample data to WOW the user on load
+  // ─── Paper-specific: Strategy breakdown (always from paperTrades) ─────────────
+  paperStrategyStats = computed(() => {
+    const list = this.paperTrades().filter(t => t.status !== 'OPEN');
+    const map = new Map<string, { wins: number; losses: number; totalPL: number; count: number }>();
+
+    list.forEach(t => {
+      const key = t.strategy || 'No Strategy';
+      const existing = map.get(key) || { wins: 0, losses: 0, totalPL: 0, count: 0 };
+      existing.count++;
+      existing.totalPL += t.netPL || 0;
+      if ((t.netPL || 0) > 0) existing.wins++;
+      else if ((t.netPL || 0) < 0) existing.losses++;
+      map.set(key, existing);
+    });
+
+    return Array.from(map.entries()).map(([strategy, data]) => ({
+      strategy,
+      count: data.count,
+      wins: data.wins,
+      losses: data.losses,
+      winRate: data.count > 0 ? (data.wins / data.count) * 100 : 0,
+      totalPL: data.totalPL,
+      avgPL: data.count > 0 ? data.totalPL / data.count : 0
+    })).sort((a, b) => b.totalPL - a.totalPL);
+  });
+
+  // ─── Sample Live Data ─────────────────────────────────────────────────────────
   loadSampleData() {
     const today = new Date();
     const mockTrades: Trade[] = [];
-
     const symbols: IndexSymbol[] = ['NIFTY', 'BANKNIFTY', 'FINNIFTY', 'SENSEX'];
     const strikes = [22000, 22200, 47500, 48000, 21000, 72500];
     const notes = [
@@ -215,24 +267,17 @@ export class JournalService {
       'Followed trade plan, hit target premium!'
     ];
 
-    // Generate 12 historical trades spread over the last 15 days
     for (let i = 12; i >= 1; i--) {
       const tradeDate = new Date();
       tradeDate.setDate(today.getDate() - i);
       const dateStr = tradeDate.toISOString().split('T')[0];
-
       const symbol = symbols[i % symbols.length];
       const isCE = i % 2 === 0;
       const entryPremium = 80 + (i * 12) % 150;
-      const isWin = i % 3 !== 0; // 66% win rate in sample data
-      
-      let exitPremium: number;
-      if (isWin) {
-        exitPremium = Math.round(entryPremium * (1.3 + (i % 3) * 0.1)); // 30-50% profit
-      } else {
-        exitPremium = Math.round(entryPremium * 0.7); // 30% loss (stop loss hit)
-      }
-
+      const isWin = i % 3 !== 0;
+      const exitPremium = isWin
+        ? Math.round(entryPremium * (1.3 + (i % 3) * 0.1))
+        : Math.round(entryPremium * 0.7);
       const lotSizes = this.settingsService.settings().lotSizes;
       const lotSize = lotSizes[symbol] || 25;
       const quantity = lotSize * (1 + (i % 3));
@@ -250,29 +295,26 @@ export class JournalService {
         targetPremium: Math.round(entryPremium * 1.4),
         netPL: (exitPremium - entryPremium) * quantity,
         status: isWin ? 'WIN' : 'LOSS',
-        notes: notes[i % notes.length]
+        notes: notes[i % notes.length],
+        tradeType: 'LIVE'
       });
     }
 
-    // Sort newest first
     mockTrades.sort((a, b) => b.date.localeCompare(a.date));
     this.saveTrades(mockTrades);
   }
 
-  // Import trades from CSV
+  // ─── Import / Export CSV ──────────────────────────────────────────────────────
   importFromCSV(csvText: string): boolean {
     try {
       const lines = csvText.split('\n');
       if (lines.length < 2) return false;
-
       const headers = lines[0].split(',').map(h => h.trim());
       const importedTrades: Trade[] = [];
 
       for (let i = 1; i < lines.length; i++) {
         if (!lines[i].trim()) continue;
         const cols = lines[i].split(',').map(c => c.trim().replace(/^"|"$/g, ''));
-        
-        // Match header mappings
         const date = cols[headers.indexOf('Date')] || new Date().toISOString().split('T')[0];
         const symbol = (cols[headers.indexOf('Symbol')] as IndexSymbol) || 'NIFTY';
         const strike = parseFloat(cols[headers.indexOf('Strike')] || '0');
@@ -287,27 +329,25 @@ export class JournalService {
 
         const trade: Trade = {
           id: crypto.randomUUID(),
-          date,
-          symbol,
-          strike,
-          optionType,
-          entryPremium,
-          exitPremium,
-          quantity,
-          stopLossPremium,
-          targetPremium,
-          notes,
-          status: 'OPEN'
+          date, symbol, strike, optionType, entryPremium, exitPremium,
+          quantity, stopLossPremium, targetPremium, notes,
+          status: 'OPEN',
+          tradeType: this.tradeMode()
         };
-
         this.calculateTradePLAndStatus(trade);
         importedTrades.push(trade);
       }
 
       if (importedTrades.length > 0) {
-        const merged = [...importedTrades, ...this.trades()];
-        merged.sort((a, b) => b.date.localeCompare(a.date));
-        this.saveTrades(merged);
+        if (this.tradeMode() === 'LIVE') {
+          const merged = [...importedTrades, ...this.trades()];
+          merged.sort((a, b) => b.date.localeCompare(a.date));
+          this.saveTrades(merged);
+        } else {
+          const merged = [...importedTrades, ...this.paperTrades()];
+          merged.sort((a, b) => b.date.localeCompare(a.date));
+          this.savePaperTrades(merged);
+        }
         return true;
       }
       return false;
@@ -317,33 +357,24 @@ export class JournalService {
     }
   }
 
-  // Export trades to CSV
   exportToCSV() {
-    const list = this.trades();
-    const headers = ['Date', 'Symbol', 'Strike', 'CE/PE', 'EntryPremium', 'ExitPremium', 'Quantity', 'StopLoss', 'Target', 'NetPL', 'Status', 'Notes'];
-    
+    const list = this.activeTrades();
+    const headers = ['Date', 'Symbol', 'Strike', 'CE/PE', 'EntryPremium', 'ExitPremium',
+      'Quantity', 'StopLoss', 'Target', 'NetPL', 'Status', 'Strategy', 'Notes'];
     const rows = list.map(t => [
-      t.date,
-      t.symbol,
-      t.strike,
-      t.optionType,
-      t.entryPremium,
+      t.date, t.symbol, t.strike, t.optionType, t.entryPremium,
       t.exitPremium !== undefined ? t.exitPremium : '',
-      t.quantity,
-      t.stopLossPremium,
-      t.targetPremium,
+      t.quantity, t.stopLossPremium, t.targetPremium,
       t.netPL !== undefined ? t.netPL : '',
       t.status,
+      t.strategy || '',
       `"${(t.notes || '').replace(/"/g, '""')}"`
     ]);
-
     const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    
-    link.setAttribute('href', url);
-    link.setAttribute('download', `trading_journal_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('href', URL.createObjectURL(blob));
+    link.setAttribute('download', `${this.tradeMode().toLowerCase()}_journal_${new Date().toISOString().split('T')[0]}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();

@@ -6,6 +6,7 @@ import { TradePlannerComponent } from './features/trade-planner/trade-planner.co
 import { TradingJournalComponent } from './features/trading-journal/trading-journal.component';
 import { SettingsComponent } from './features/settings/settings.component';
 import { GuideComponent } from './features/guide/guide.component';
+import { PaperAnalyticsComponent } from './features/paper-analytics/paper-analytics.component';
 
 export const routes: Routes = [
   {
@@ -17,6 +18,7 @@ export const routes: Routes = [
       { path: 'calculators', component: CalculatorsComponent },
       { path: 'planner', component: TradePlannerComponent },
       { path: 'journal', component: TradingJournalComponent },
+      { path: 'paper-analytics', component: PaperAnalyticsComponent },
       { path: 'settings', component: SettingsComponent },
       { path: 'guide', component: GuideComponent }
     ]

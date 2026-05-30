@@ -64,6 +64,11 @@ import { RiskService } from '../../core/services/risk.service';
             <span class="text-sm">Trading Journal</span>
           </a>
 
+          <a routerLink="/paper-analytics" routerLinkActive="bg-amber-50 text-amber-700 active-nav-paper" (click)="onLinkClick()" class="flex items-center gap-3 py-3 px-4 rounded-xl font-semibold text-slate-600 hover:bg-amber-50 hover:text-amber-700 transition-all duration-150">
+            <mat-icon class="scale-90 text-slate-400">science</mat-icon>
+            <span class="text-sm">Paper Analytics</span>
+          </a>
+
           <a routerLink="/guide" routerLinkActive="bg-indigo-50 text-indigo-600 active-nav" (click)="onLinkClick()" class="flex items-center gap-3 py-3 px-4 rounded-xl font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-all duration-150">
             <mat-icon class="scale-90 text-slate-400">help_outline</mat-icon>
             <span class="text-sm">User Guide</span>
@@ -97,13 +102,41 @@ import { RiskService } from '../../core/services/risk.service';
             <span class="text-base font-bold text-slate-800 dark:text-white hidden sm:inline-block">Risk Mania</span>
           </div>
 
-          <!-- Header Right Utilities: Daily Limit Widget + Mode Toggles -->
-          <div class="flex items-center gap-4">
-            
+          <!-- Header Right Utilities -->
+          <div class="flex items-center gap-3">
+
+            <!-- LIVE / PAPER Mode Toggle -->
+            <div class="flex items-center gap-0.5 p-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
+              <button
+                id="btn-mode-live"
+                (click)="setMode('LIVE')"
+                class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200"
+                [ngClass]="tradeMode() === 'LIVE'
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'"
+                matTooltip="Switch to Live Trading mode">
+                <mat-icon class="text-sm" style="font-size:14px;width:14px;height:14px;line-height:14px">trending_up</mat-icon>
+                <span class="hidden sm:inline">LIVE</span>
+              </button>
+              <button
+                id="btn-mode-paper"
+                (click)="setMode('PAPER')"
+                class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200"
+                [ngClass]="tradeMode() === 'PAPER'
+                  ? 'bg-amber-500 text-white shadow-sm'
+                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'"
+                matTooltip="Switch to Paper Trading mode">
+                <mat-icon class="text-sm" style="font-size:14px;width:14px;height:14px;line-height:14px">science</mat-icon>
+                <span class="hidden sm:inline">PAPER</span>
+              </button>
+            </div>
+
             <!-- Live Daily Risk Monitor -->
             <div class="hidden xs:flex items-center gap-3 px-3 py-1.5 rounded-xl border" [ngClass]="todayPL() < 0 && Math.abs(todayPL()) >= dailyLimit() ? 'bg-rose-50 border-rose-200 dark:bg-rose-950/20 dark:border-rose-900/45 text-rose-600 dark:text-rose-400 animate-pulse' : todayPL() >= 0 ? 'bg-emerald-50 border-emerald-100 dark:bg-emerald-950/15 dark:border-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'bg-slate-50 border-slate-200 dark:bg-slate-900 dark:border-slate-800 text-slate-600 dark:text-slate-300'">
               <div class="text-right">
-                <span class="text-[9px] font-extrabold uppercase tracking-wider block leading-none">Today's P&L</span>
+                <span class="text-[9px] font-extrabold uppercase tracking-wider block leading-none">
+                  {{ tradeMode() === 'PAPER' ? 'Paper P&L' : "Today's P&L" }}
+                </span>
                 <span class="text-xs font-black leading-none mt-1 inline-block">
                   {{ todayPL() >= 0 ? '+' : '' }}₹{{ todayPL() | number:'1.2-2' }}
                 </span>
@@ -117,6 +150,13 @@ import { RiskService } from '../../core/services/risk.service';
 
           </div>
         </mat-toolbar>
+
+        <!-- Paper Mode Banner -->
+        <div *ngIf="tradeMode() === 'PAPER'"
+          class="flex items-center gap-2 px-4 py-2 bg-amber-50 border-b border-amber-200 dark:bg-amber-950/20 dark:border-amber-900/40 text-amber-700 dark:text-amber-400 shrink-0">
+          <mat-icon style="font-size:16px;width:16px;height:16px;line-height:16px">science</mat-icon>
+          <span class="text-xs font-bold">PAPER TRADING MODE — All data shown is simulated. No real money involved.</span>
+        </div>
 
         <!-- Main Inner Scrollable Content -->
         <main class="flex-1 overflow-y-auto overflow-x-hidden w-full max-w-full">
@@ -133,7 +173,7 @@ import { RiskService } from '../../core/services/risk.service';
       width: 100vw;
     }
     ::ng-deep .active-link {
-      background-color: #6366f1 !important; /* Indigo 500 */
+      background-color: #6366f1 !important;
       color: #ffffff !important;
     }
     ::ng-deep .active-link mat-icon {
@@ -143,6 +183,9 @@ import { RiskService } from '../../core/services/risk.service';
       background-color: #6366f1 !important;
       color: #ffffff !important;
     }
+    ::ng-deep .active-nav-paper.active-nav mat-icon {
+      color: #b45309 !important;
+    }
   `]
 })
 export class LayoutComponent {
@@ -150,9 +193,7 @@ export class LayoutComponent {
   private readonly journalService = inject(JournalService);
   private readonly riskService = inject(RiskService);
 
-  // JS Math exporter
   Math = Math;
-
   isMobile = false;
 
   constructor() {
@@ -161,9 +202,13 @@ export class LayoutComponent {
   }
 
   isDarkMode = computed(() => this.themeService.isDarkMode());
-
+  tradeMode = computed(() => this.journalService.tradeMode());
   todayPL = computed(() => this.journalService.todayPL());
   dailyLimit = computed(() => this.riskService.dailyLossLimit());
+
+  setMode(mode: 'LIVE' | 'PAPER') {
+    this.journalService.setTradeMode(mode);
+  }
 
   toggleTheme() {
     this.themeService.toggleTheme();
@@ -174,10 +219,6 @@ export class LayoutComponent {
   }
 
   onLinkClick() {
-    if (this.isMobile) {
-      // Toggle sidebar on link click if mobile
-      // Wait, we need viewchild to toggle, but since it's mobile and sidenav is in over mode it automatically closes on backdrop click.
-      // But we can let browser handle it or write simple toggle handles. Sidenav will close on backdrop click by default.
-    }
+    // Sidenav closes on backdrop click in 'over' (mobile) mode automatically
   }
 }

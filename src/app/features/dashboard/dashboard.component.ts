@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, AfterViewInit, ViewChild, ElementRef, OnDestroy, effect } from '@angular/core';
+import { Component, inject, OnInit, AfterViewInit, ViewChild, ElementRef, OnDestroy, effect, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -30,7 +30,17 @@ import { Chart } from 'chart.js/auto';
   ],
   template: `
     <div class="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
-      
+
+      <!-- Paper Mode Banner -->
+      <div *ngIf="tradeMode() === 'PAPER'"
+        class="flex items-center gap-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-2xl">
+        <span class="text-2xl">🧪</span>
+        <div>
+          <div class="text-sm font-bold text-amber-700">Paper Trading Dashboard</div>
+          <div class="text-xs text-amber-600">Stats and charts below reflect your simulated paper trades only.</div>
+        </div>
+      </div>
+
       <!-- Psychology Alert Banner (Top level) -->
       <div *ngIf="isDailyLimitExceeded" class="bg-rose-600 text-white p-6 rounded-2xl shadow-lg border border-rose-700 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-pulse">
         <div class="flex items-center gap-3">
@@ -294,6 +304,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly riskService = inject(RiskService);
   private readonly settingsService = inject(SettingsService);
 
+  tradeMode = computed(() => this.journalService.tradeMode());
+
   // Math object export to use inside template
   Math = Math;
 
@@ -337,8 +349,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   constructor() {
     // Setup side-effect to monitor signals changes and update charts
     effect(() => {
-      // Accessing signals of journalService.trades() to trigger effect execution reactively
-      const _ = this.journalService.trades();
+      // React to both live and paper trades, and mode changes
+      const _ = this.journalService.activeTrades();
       
       // Update variables
       this.capital = this.riskService.capital();
